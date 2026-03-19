@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CoinPayments · LinkedIn Intelligence Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:     #020912;
+  --bg1:    #03090f;
+  --bg2:    #060d18;
+  --bg3:    #080f1c;
+  --border: #0b1d2e;
+  --border2:#0e2a3e;
+  --text:   #c8dff0;
+  --muted:  #3a5e74;
+  --dim:    #1a4e6a;
+  --faint:  #0a1c28;
+  --accent: #0077b5;
+  --green:  #22d3a5;
+  --gold:   #f0b429;
+  --red:    #f87171;
+  --mono: 'DM Mono','Courier New',monospace;
+  --display: 'Syne',sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 14px; line-height: 1.6; }
+::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: var(--bg); } ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── Gate ── */
+#gate {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 40px 24px; text-align: center;
+}
+.gate-logo { width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg,var(--accent),var(--green)); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 28px; color: #fff; margin: 0 auto 24px; }
+.gate-title { font-family: var(--display); font-weight: 800; font-size: 24px; color: var(--text); margin-bottom: 10px; }
+.gate-sub { font-size: 12px; color: var(--dim); max-width: 400px; line-height: 1.75; margin-bottom: 28px; }
+.gate-input { width: 100%; max-width: 460px; padding: 13px 16px; background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; color: var(--text); font-family: var(--mono); font-size: 13px; letter-spacing: .04em; margin-bottom: 12px; transition: border-color .15s; }
+.gate-input:focus { outline: none; border-color: var(--accent); }
+.gate-hint { font-size: 11px; color: var(--faint); max-width: 420px; line-height: 1.65; }
+.gate-hint a { color: var(--dim); text-decoration: none; } .gate-hint a:hover { color: #4ab0d8; }
+.gate-error { font-size: 12px; color: var(--red); margin-top: 10px; display: none; }
+
+/* ── App shell ── */
+#app { display: none; flex-direction: column; height: 100vh; }
+#topbar { display: flex; align-items: center; justify-content: space-between; padding: 0 28px; height: 54px; background: var(--bg1); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+#tabbar { display: flex; padding: 0 28px; background: var(--bg1); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+#body { flex: 1; overflow-y: auto; }
+#main { max-width: 900px; margin: 0 auto; padding: 28px 24px; }
+
+/* ── Logo ── */
+.logo-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg,var(--accent),var(--green)); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; color: #fff; flex-shrink: 0; }
+.logo-name { font-family: var(--display); font-weight: 800; font-size: 14px; color: var(--text); }
+.logo-sub { font-size: 9px; color: #1a5a80; letter-spacing: .18em; }
+
+/* ── Status ── */
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); transition: background .3s; }
+.status-dot.busy { background: var(--gold); animation: pulse 1s infinite; }
+.status-dot.error { background: var(--red); }
+.status-txt { font-size: 10px; color: var(--dim); letter-spacing: .12em; }
+
+/* ── Tabs ── */
+.tab { background: none; border: none; cursor: pointer; padding: 13px 18px; font-size: 11px; font-family: var(--mono); letter-spacing: .1em; text-transform: uppercase; font-weight: 500; color: var(--dim); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s; }
+.tab.on { color: #4ab0d8; border-bottom-color: #1a7aaa; }
+
+/* ── Buttons ── */
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 24px; border-radius: 7px; border: none; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .1em; cursor: pointer; transition: opacity .2s; }
+.btn-grad { background: linear-gradient(135deg,var(--accent),var(--green)); color: #fff; }
+.btn-grad:hover { opacity: .88; } .btn-grad:disabled { background: var(--bg2); color: var(--dim); cursor: not-allowed; opacity: 1; }
+.btn-ghost { background: var(--bg2); border: 1px solid var(--border2); color: #5090b0; padding: 7px 14px; font-size: 11px; border-radius: 5px; }
+.btn-ghost:hover { border-color: var(--accent); color: #4ab0d8; }
+.btn-ghost.done { background: #0a2e24; border-color: #22d3a540; color: var(--green); }
+
+/* ── Cards ── */
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: 9px; }
+.article-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; padding: 16px 18px; border-radius: 9px; cursor: pointer; transition: all .18s; margin-bottom: 8px; border: 1px solid var(--border); background: var(--bg2); }
+.article-row:hover { border-color: var(--accent); background: var(--bg3); }
+.article-row.active { border-color: #1a7aaa; background: var(--bg3); }
+.art-title { font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--text); margin-bottom: 5px; line-height: 1.4; }
+.art-meta { font-size: 11px; color: var(--dim); margin-bottom: 6px; }
+.art-meta em { color: #1a80b0; font-style: normal; }
+.art-snippet { font-size: 12px; color: var(--muted); line-height: 1.65; }
+.art-badge { flex-shrink: 0; font-size: 10px; color: #1a80b0; padding: 5px 11px; border: 1px solid var(--border); border-radius: 4px; letter-spacing: .1em; font-weight: 700; white-space: nowrap; margin-top: 2px; transition: all .18s; }
+.article-row:hover .art-badge, .article-row.active .art-badge { border-color: var(--accent); color: #4ab0d8; }
+
+/* ── Progress ── */
+.prog-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: none; }
+.prog-wrap.on { display: block; }
+.prog-row { display: flex; justify-content: space-between; font-size: 10px; color: var(--dim); margin-bottom: 8px; letter-spacing: .1em; }
+.prog-track { height: 3px; background: var(--faint); border-radius: 2px; overflow: hidden; }
+.prog-fill { height: 100%; width: 0%; background: linear-gradient(90deg,var(--accent),var(--green)); border-radius: 2px; transition: width .5s ease; }
+.prog-topics { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; font-size: 10px; }
+
+/* ── Tags ── */
+.tag { display: inline-flex; font-size: 10px; font-weight: 700; letter-spacing: .1em; padding: 3px 9px; border-radius: 3px; text-transform: uppercase; white-space: nowrap; margin-right: 5px; margin-bottom: 4px; }
+
+/* ── Info cards ── */
+.icard { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 13px 16px; margin-bottom: 12px; }
+.icard-lbl { font-size: 10px; font-weight: 700; color: #1a6090; letter-spacing: .13em; margin-bottom: 8px; }
+.icard-body { font-size: 13px; color: #6098b8; line-height: 1.72; }
+
+/* ── LinkedIn box ── */
+.li-box { background: var(--bg1); border: 1px solid #1a5a80; border-radius: 10px; padding: 18px 20px; margin-top: 4px; }
+.li-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.li-logo { width: 30px; height: 30px; background: #0077b5; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 15px; color: #fff; flex-shrink: 0; }
+.li-post { font-size: 13.5px; color: #88b8d8; line-height: 1.82; white-space: pre-wrap; border-top: 1px solid var(--border); padding-top: 14px; }
+.url-bar { margin-top: 14px; padding: 10px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 7px; display: flex; align-items: center; gap: 10px; font-size: 11px; color: #2d6e90; overflow: hidden; }
+.url-bar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.btn-copy-full { width: 100%; margin-top: 16px; padding: 15px 20px; border-radius: 8px; border: 1px solid var(--accent); background: linear-gradient(135deg,#003d5c,#005a8a); color: #a8d8f0; font-size: 13px; font-family: var(--mono); font-weight: 700; letter-spacing: .08em; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all .2s; box-shadow: 0 0 24px #0077b520; }
+.btn-copy-full:hover { background: linear-gradient(135deg,#004d72,#006aa0); }
+.btn-copy-full.done { background: linear-gradient(135deg,#0a2e24,#092018); border-color: #22d3a540; color: var(--green); box-shadow: none; }
+
+/* ── Schedule bar ── */
+.sched-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.sched-label { font-size: 11px; color: var(--dim); letter-spacing: .06em; }
+.sched-select { background: var(--bg1); border: 1px solid var(--border2); border-radius: 5px; color: #4ab0d8; font-size: 11px; font-family: var(--mono); padding: 5px 10px; cursor: pointer; }
+.sched-select:focus { outline: none; }
+.next-scan { font-size: 10px; color: var(--faint); margin-left: auto; }
+
+/* ── Empty / loading ── */
+.empty { text-align: center; padding: 70px 20px; }
+.empty-icon { font-size: 42px; opacity: .12; margin-bottom: 14px; }
+.empty-title { font-family: var(--display); font-size: 15px; color: #163040; margin-bottom: 6px; }
+.empty-sub { font-size: 12px; color: var(--faint); }
+.loader { display: none; flex-direction: column; align-items: center; padding: 80px 20px; gap: 16px; }
+.loader.on { display: flex; }
+.loader-title { font-family: var(--display); font-size: 16px; color: #1a6090; }
+.loader-sub { font-size: 11px; color: var(--faint); max-width: 300px; text-align: center; line-height: 1.65; }
+
+/* ── Section header ── */
+.sec-head { margin-bottom: 20px; }
+.sec-title { font-family: var(--display); font-weight: 800; font-size: 22px; color: var(--text); margin-bottom: 5px; }
+.sec-sub { font-size: 12px; color: var(--dim); line-height: 1.6; }
+
+/* ── Analysis header ── */
+.an-head { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.an-hl { font-family: var(--display); font-weight: 800; font-size: 21px; color: #ddeefa; line-height: 1.3; margin: 10px 0 8px; }
+.an-meta { font-size: 11px; color: var(--dim); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.an-meta a { color: #1a80b0; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; } .an-meta a:hover { color: #4ab0d8; }
+
+/* ── Refresh badge ── */
+.refresh-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; color: var(--green); background: #0a2e24; border: 1px solid #22d3a530; border-radius: 4px; padding: 3px 8px; margin-left: 8px; animation: fadeIn .4s ease; }
+
+/* ── Settings ── */
+.setting-row { margin-bottom: 18px; }
+.setting-lbl { font-size: 10px; color: #1a5888; letter-spacing: .14em; font-weight: 600; display: block; margin-bottom: 7px; }
+.setting-input { width: 100%; padding: 11px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 7px; color: #88b8d8; font-size: 13px; font-family: var(--mono); transition: border-color .15s; }
+.setting-input:focus { outline: none; border-color: #1a5a80; }
+.setting-msg { font-size: 12px; color: var(--green); margin-top: 10px; display: none; }
+.info-banner { padding: 12px 16px; background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; font-size: 12px; color: #2d6e90; line-height: 1.7; margin-top: 20px; }
+.info-banner strong { color: #4a90b0; }
+.info-banner code { background: var(--bg1); padding: 1px 6px; border-radius: 3px; color: var(--green); font-family: var(--mono); }
+
+/* ── Animations ── */
+@keyframes spin   { to { transform: rotate(360deg); } }
+@keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.3} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.spin { animation: spin .8s linear infinite; flex-shrink: 0; }
+.panel { display: none; animation: fadeIn .3s ease; }
+.panel.on { display: block; }
+
+@media(max-width:600px){ #topbar,#tabbar{padding:0 16px} #main{padding:20px 14px} .btn{padding:10px 18px} }
+</style>
+</head>
+<body>
+
+<!-- ═══ API KEY GATE ═══════════════════════════════════════════════════════ -->
+<div id="gate">
+  <div class="gate-logo">₵</div>
+  <div class="gate-title">CoinPayments LinkedIn Agent</div>
+  <p class="gate-sub">Scans the web for the latest crypto payments news and generates ready-to-post LinkedIn content — powered by Claude Opus. Enter your Anthropic API key to get started.</p>
+  <input type="password" id="gate-key" class="gate-input" placeholder="sk-ant-api03-…" onkeydown="if(event.key==='Enter')startApp()"/>
+  <button class="btn btn-grad" onclick="startApp()" style="margin-bottom:16px">ENTER AGENT →</button>
+  <p class="gate-hint">Get a free key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>. Your key never leaves your browser — it goes only to <code style="background:#06111e;padding:1px 6px;border-radius:3px;color:#22d3a5">api.anthropic.com</code>.</p>
+  <div class="gate-error" id="gate-err"></div>
+</div>
+
+<!-- ═══ MAIN APP ══════════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- Top bar -->
+  <div id="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="logo-mark">₵</div>
+      <div><div class="logo-name">CoinPayments</div><div class="logo-sub">LINKEDIN INTELLIGENCE AGENT</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="status-dot" id="sdot"></div>
+      <span class="status-txt" id="stxt">READY</span>
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <div id="tabbar">
+    <button class="tab on" data-tab="news"     onclick="switchTab(this)">Latest News</button>
+    <button class="tab"    data-tab="analysis" onclick="switchTab(this)">Analysis</button>
+    <button class="tab"    data-tab="settings" onclick="switchTab(this)">⚙ Settings</button>
+  </div>
+
+  <div id="body"><div id="main">
+
+    <!-- ── NEWS TAB ──────────────────────────────────────────────────── -->
+    <div class="panel on" id="tab-news">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;gap:16px;flex-wrap:wrap">
+        <div class="sec-head" style="margin:0">
+          <div class="sec-title">Live News Scanner</div>
+          <div class="sec-sub" id="scan-subtitle">Searches the web for the latest crypto payments, blockchain & tokenization news</div>
+        </div>
+        <button class="btn btn-grad" id="scan-btn" onclick="runScan()">▶ RUN SCAN</button>
+      </div>
+
+      <!-- Auto-refresh scheduler -->
+      <div class="sched-bar">
+        <span class="sched-label">AUTO-REFRESH</span>
+        <select class="sched-select" id="sched-select" onchange="setSchedule()">
+          <option value="0">Off</option>
+          <option value="30">Every 30 min</option>
+          <option value="60" selected>Every hour</option>
+          <option value="180">Every 3 hours</option>
+          <option value="360">Every 6 hours</option>
+          <option value="720">Every 12 hours</option>
+        </select>
+        <span class="next-scan" id="next-scan-txt"></span>
+      </div>
+
+      <div class="prog-wrap" id="prog"><div class="prog-row"><span>SEARCHING WEB</span><span id="prog-pct">0%</span></div><div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div><div class="prog-topics" id="prog-topics"></div></div>
+      <div id="scan-err" style="color:var(--red);font-size:12px;padding:10px 14px;background:#160808;border:1px solid #301010;border-radius:6px;margin-bottom:16px;display:none"></div>
+      <div id="articles-list"></div>
+      <div class="empty" id="news-empty"><div class="empty-icon">◈</div><div class="empty-title">No articles yet</div><div class="empty-sub">Hit Run Scan to fetch the latest crypto news</div></div>
+    </div>
+
+    <!-- ── ANALYSIS TAB ────────────────────────────────────────────── -->
+    <div class="panel" id="tab-analysis">
+      <div class="loader" id="an-loader">
+        <svg class="spin" width="30" height="30" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1a6090" stroke-width="2.5" stroke-dasharray="31.4" stroke-dashoffset="10"/></svg>
+        <div class="loader-title">Analyzing with Claude Opus…</div>
+        <div class="loader-sub">Generating article summary, CoinPayments angle & LinkedIn post</div>
+      </div>
+      <div id="an-result"></div>
+      <div class="empty" id="an-empty"><div class="empty-icon">◉</div><div class="empty-title">No analysis yet</div><div class="empty-sub">Select an article from Latest News</div></div>
+    </div>
+
+    <!-- ── SETTINGS TAB ────────────────────────────────────────────── -->
+    <div class="panel" id="tab-settings">
+      <div class="sec-title" style="margin-bottom:5px">Settings</div>
+      <div class="sec-sub" style="margin-bottom:24px">Manage your API key and scan preferences</div>
+
+      <div class="setting-row">
+        <label class="setting-lbl">ANTHROPIC API KEY</label>
+        <input type="password" id="set-key" class="setting-input" placeholder="sk-ant-api03-…"/>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-grad" onclick="updateKey()">SAVE KEY</button>
+        <button class="btn btn-ghost" onclick="clearKey()">CLEAR & LOGOUT</button>
+      </div>
+      <div class="setting-msg" id="set-msg">✓ Key saved</div>
+
+      <div class="info-banner">
+        <strong>Privacy:</strong> Your API key is stored in <code>sessionStorage</code> — it lives only in this browser tab and clears when you close it. It is sent only to <code>api.anthropic.com</code>.<br/><br/>
+        <strong>Cost:</strong> Each full scan (6 searches) uses ~$0.03–0.06 of API credits. Each article analysis costs ~$0.01–0.02. Very affordable for daily use.
+      </div>
+    </div>
+
+  </div></div>
+</div><!-- /app -->
+
+<script>
+// ═══ Config ════════════════════════════════════════════════════════════════
+
+const QUERIES = [
+  "crypto payments merchant adoption news 2026",
+  "blockchain tokenization traditional finance news 2026",
+  "stablecoin enterprise payments news 2026",
+  "crypto B2B cross-border payments latest news",
+  "DeFi TradFi convergence news 2026",
+  "CBDC digital currency payments news 2026",
+];
+
+const SYS = `You are a senior content strategist for CoinPayments.net — the world's leading crypto payment gateway supporting 100+ cryptocurrencies for merchants globally.
+
+Analyze the given article and return ONLY a raw JSON object (no markdown, no preamble):
+{
+  "headline": "Punchy headline reframing article for CoinPayments audience (max 10 words)",
+  "summary": "2-3 sentence neutral article summary.",
+  "relevance": "2-3 sentences on how this specifically relates to CoinPayments.net.",
+  "angle": "One sentence on the unique content angle CoinPayments should take.",
+  "linkedin_post": "180-220 word LinkedIn post as CoinPayments.net. Never start with Exciting news. Open with bold data point or provocative statement. Connect to CoinPayments merchant value prop. Close with engagement question. End with 3 hashtags: always #CryptoPayments plus 2 relevant ones.",
+  "sentiment": "bullish OR neutral OR cautious",
+  "tags": ["3-4 topic tags"]
+}`;
+
+// ═══ State ═════════════════════════════════════════════════════════════════
+
+let apiKey       = sessionStorage.getItem("cp_key") || "";
+let articles     = [];
+let selectedArt  = null;
+let scanning     = false;
+let analyzing    = false;
+let schedTimer   = null;
+let schedMins    = 60;
+let nextScanTime = null;
+let countdownInterval = null;
+
+// ═══ Boot ══════════════════════════════════════════════════════════════════
+
+function boot() {
+  if (apiKey) {
+    showApp();
+    setSchedule();
+  }
+}
+
+function startApp() {
+  const k = document.getElementById("gate-key").value.trim();
+  if (!k.startsWith("sk-")) {
+    showGateErr("Please enter a valid Anthropic API key (starts with sk-ant-…)");
+    return;
+  }
+  apiKey = k;
+  sessionStorage.setItem("cp_key", apiKey);
+  showApp();
+  setSchedule();
+}
+
+function showApp() {
+  document.getElementById("gate").style.display = "none";
+  document.getElementById("app").style.display  = "flex";
+}
+
+function showGateErr(msg) {
+  const el = document.getElementById("gate-err");
+  el.textContent = msg; el.style.display = "block";
+}
+
+// ═══ Tab switching ═════════════════════════════════════════════════════════
+
+function switchTab(btn) {
+  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("on", b === btn));
+  const id = btn.dataset.tab;
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("on", p.id === "tab-" + id));
+}
+
+// ═══ Status ════════════════════════════════════════════════════════════════
+
+function setStatus(txt, state="idle") {
+  document.getElementById("stxt").textContent = txt;
+  const d = document.getElementById("sdot");
+  d.classList.toggle("busy",  state==="busy");
+  d.classList.toggle("error", state==="error");
+}
+
+// ═══ API ═══════════════════════════════════════════════════════════════════
+
+async function callClaude({ system, prompt, search=false }) {
+  const body = {
+    model: "claude-opus-4-5",
+    max_tokens: 1500,
+    messages: [{ role: "user", content: prompt }],
+  };
+  if (system) body.system = system;
+  if (search) body.tools = [{ type: "web_search_20250305", name: "web_search" }];
+
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(e?.error?.message || `API error ${r.status}`);
+  }
+  const d = await r.json();
+  return d.content.filter(b => b.type === "text").map(b => b.text).join("");
+}
+
+function parseJSON(raw) {
+  const s = raw.replace(/```json|```/g, "").trim();
+  const a = s.indexOf("{"), b = s.lastIndexOf("}");
+  if (a < 0 || b < 0) throw new Error("No JSON in response");
+  return JSON.parse(s.slice(a, b+1));
+}
+
+function parseArr(raw) {
+  const s = raw.replace(/```json|```/g, "").trim();
+  const a = s.indexOf("["), b = s.lastIndexOf("]");
+  if (a < 0 || b < 0) throw new Error("No array in response");
+  return JSON.parse(s.slice(a, b+1));
+}
+
+// ═══ SCAN ══════════════════════════════════════════════════════════════════
+
+async function runScan(silent=false) {
+  if (scanning) return;
+  scanning = true;
+
+  const btn  = document.getElementById("scan-btn");
+  const prog = document.getElementById("prog");
+  const errEl= document.getElementById("scan-err");
+  const list = document.getElementById("articles-list");
+  const empty= document.getElementById("news-empty");
+
+  if (!silent) {
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="spin" width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="31.4" stroke-dashoffset="10"/></svg> SCANNING…`;
+  }
+  errEl.style.display = "none";
+  prog.classList.add("on");
+  setStatus("SCANNING WEB", "busy");
+
+  const found = [];
+
+  for (let i = 0; i < QUERIES.length; i++) {
+    const pct = Math.round(((i+1)/QUERIES.length)*100);
+    document.getElementById("prog-fill").style.width = pct + "%";
+    document.getElementById("prog-pct").textContent  = pct + "%";
+    renderProgTopics(i+1);
+
+    try {
+      const raw = await callClaude({
+        search: true,
+        prompt: `Search the web right now for the 2 most recent significant news articles published in the last 7 days about: "${QUERIES[i]}".
+Return ONLY a raw JSON array. Each item must have exactly these keys: title, source, date, url, snippet (2-3 sentence summary).
+No markdown. No preamble. Just the JSON array.`,
+      });
+      const arr = parseArr(raw);
+      arr.forEach(a => {
+        if (a.title && !found.find(x => x.title === a.title))
+          found.push({ ...a, id: Math.random().toString(36).slice(2) });
+      });
+    } catch (_) { /* skip failed query */ }
+  }
+
+  articles = found.slice(0, 16);
+  prog.classList.remove("on");
+  scanning = false;
+
+  btn.disabled = false;
+  btn.innerHTML = "▶ RUN SCAN";
+
+  const ts = new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
+  document.getElementById("scan-subtitle").innerHTML =
+    `${articles.length} articles · Last scanned ${ts} <span class="refresh-badge">✓ UPDATED</span>`;
+  setTimeout(() => { const b = document.querySelector(".refresh-badge"); if(b) b.style.animation = "none"; }, 4000);
+
+  setStatus(`${articles.length} ARTICLES`);
+
+  if (articles.length === 0) {
+    empty.style.display = "block";
+    list.innerHTML = "";
+    errEl.textContent = "No articles found. Check your API key has credits, then try again.";
+    errEl.style.display = "block";
+    setStatus("SCAN FAILED", "error");
+  } else {
+    empty.style.display = "none";
+    renderArticles();
+  }
+}
+
+function renderProgTopics(done) {
+  document.getElementById("prog-topics").innerHTML = QUERIES.map((q,i) =>
+    `<span style="color:${i<done?"var(--green)":"var(--faint)"}">${i<done?"✓":"○"} ${q.split(" ").slice(0,3).join(" ")}</span>`
+  ).join("");
+}
+
+function renderArticles() {
+  const list = document.getElementById("articles-list");
+  list.innerHTML = `<div style="font-size:10px;color:#1a5888;letter-spacing:.14em;margin-bottom:12px;font-weight:600">${articles.length} ARTICLES FOUND — CLICK ANY TO GENERATE LINKEDIN CONTENT</div>`;
+  articles.forEach(a => {
+    const row = document.createElement("div");
+    row.className = "article-row" + (selectedArt?.id===a.id ? " active" : "");
+    row.innerHTML = `
+      <div style="flex:1;min-width:0">
+        <div class="art-title">${esc(a.title)}</div>
+        <div class="art-meta"><em>${esc(a.source||"")}</em>${a.date?` · ${esc(a.date)}`:""}</div>
+        <div class="art-snippet">${esc(a.snippet||"")}</div>
+      </div>
+      <div class="art-badge">${selectedArt?.id===a.id?"SELECTED ✓":"ANALYZE →"}</div>`;
+    row.onclick = () => analyze(a);
+    list.appendChild(row);
+  });
+}
+
+// ═══ ANALYZE ═══════════════════════════════════════════════════════════════
+
+async function analyze(article) {
+  if (analyzing) return;
+  analyzing = true;
+  selectedArt = article;
+  renderArticles();
+
+  // Switch to analysis tab
+  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("on", b.dataset.tab==="analysis"));
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("on", p.id==="tab-analysis"));
+
+  document.getElementById("an-empty").style.display  = "none";
+  document.getElementById("an-result").innerHTML     = "";
+  document.getElementById("an-loader").classList.add("on");
+  setStatus("ANALYZING", "busy");
+
+  try {
+    const raw = await callClaude({
+      system: SYS,
+      prompt: `Title: ${article.title}
+Source: ${article.source||"Unknown"}
+Date: ${article.date||"Recent"}
+URL: ${article.url||"N/A"}
+Summary: ${article.snippet}`,
+    });
+    const data = parseJSON(raw);
+    renderAnalysis(data, article);
+  } catch(e) {
+    document.getElementById("an-loader").classList.remove("on");
+    document.getElementById("an-empty").style.display = "block";
+    document.getElementById("an-empty").innerHTML = `
+      <div class="empty-icon">⚠</div>
+      <div class="empty-title" style="color:var(--red)">Analysis failed</div>
+      <div class="empty-sub" style="color:#3a1a1a">${esc(e.message)}</div>
+      <div class="empty-sub" style="margin-top:8px">Check your API key in ⚙ Settings</div>`;
+    setStatus("ERROR", "error");
+  } finally {
+    analyzing = false;
+  }
+}
+
+// ═══ RENDER ANALYSIS ═══════════════════════════════════════════════════════
+
+const SM = { bullish:{c:"#22d3a5",l:"BULLISH"}, neutral:{c:"#f0b429",l:"NEUTRAL"}, cautious:{c:"#f87171",l:"CAUTIOUS"} };
+
+function renderAnalysis(d, art) {
+  document.getElementById("an-loader").classList.remove("on");
+  const sm  = SM[d.sentiment] || SM.neutral;
+  const url = art?.url && art.url !== "N/A" ? art.url : null;
+  const full = url ? `${d.linkedin_post}\n\n🔗 Read more: ${url}` : d.linkedin_post;
+
+  const tags = [tag(sm.l, sm.c), ...(d.tags||[]).map(t=>tag(t,"#3a6888"))].join("");
+
+  document.getElementById("an-result").innerHTML = `
+  <div class="an-head">
+    <div style="margin-bottom:8px">${tags}</div>
+    <div class="an-hl">${esc(d.headline)}</div>
+    <div class="an-meta">
+      ${art?.source?`<span>Source: <span style="color:#1a80b0">${esc(art.source)}</span></span>`:""}
+      ${art?.date?`<span style="opacity:.3">·</span><span>${esc(art.date)}</span>`:""}
+      ${url?`<span style="opacity:.3">·</span><a href="${esc(url)}" target="_blank" rel="noreferrer">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        View Article</a>`:""}
+    </div>
+  </div>
+  ${icard("◈ ARTICLE SUMMARY",    d.summary)}
+  ${icard("◉ COINPAYMENTS ANGLE", d.relevance)}
+  ${icard("◐ CONTENT STRATEGY",   d.angle)}
+  <div class="li-box">
+    <div class="li-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="li-logo">in</div>
+        <div><div style="font-size:11px;font-weight:700;color:#b0cfe8;letter-spacing:.07em">LINKEDIN POST</div><div style="font-size:10px;color:#1a6090">Ready to publish</div></div>
+      </div>
+      <button class="btn btn-ghost" id="copy-post-only" onclick="cp('copy-post-only',${JSON.stringify(d.linkedin_post)},'⎘ POST ONLY')">⎘ POST ONLY</button>
+    </div>
+    <div class="li-post">${esc(d.linkedin_post)}</div>
+    ${url?`<div class="url-bar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1a6090" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg><span>${esc(url)}</span></div>`:""}
+    <button class="btn-copy-full" id="copy-full" onclick="cpFull('copy-full',${JSON.stringify(full)})">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
+      COPY FULL POST + ARTICLE LINK FOR LINKEDIN
+      ${url?`<span style="font-size:10px;opacity:.5;font-weight:400">includes link</span>`:""}
+    </button>
+  </div>`;
+
+  setStatus("READY");
+}
+
+function tag(l, c) { return `<span class="tag" style="border:1px solid ${c}50;color:${c};background:${c}15">${esc(l)}</span>`; }
+function icard(lbl, body) { return `<div class="icard"><div class="icard-lbl">${lbl}</div><div class="icard-body">${esc(body)}</div></div>`; }
+
+// ═══ COPY HELPERS ══════════════════════════════════════════════════════════
+
+function cp(id, text, reset) {
+  navigator.clipboard.writeText(text);
+  const b = document.getElementById(id);
+  if (!b) return;
+  b.classList.add("done"); b.textContent = "✓ COPIED";
+  setTimeout(() => { b.classList.remove("done"); b.textContent = reset; }, 2000);
+}
+
+function cpFull(id, text) {
+  navigator.clipboard.writeText(text);
+  const b = document.getElementById(id);
+  if (!b) return;
+  b.classList.add("done");
+  b.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> COPIED — PASTE INTO LINKEDIN`;
+  setTimeout(() => {
+    b.classList.remove("done");
+    b.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg> COPY FULL POST + ARTICLE LINK FOR LINKEDIN`;
+  }, 3000);
+}
+
+// ═══ SCHEDULER ═════════════════════════════════════════════════════════════
+
+function setSchedule() {
+  clearInterval(schedTimer);
+  clearInterval(countdownInterval);
+  schedMins = parseInt(document.getElementById("sched-select")?.value || "60");
+
+  if (schedMins === 0) {
+    document.getElementById("next-scan-txt").textContent = "Auto-refresh off";
+    return;
+  }
+
+  scheduleNext();
+}
+
+function scheduleNext() {
+  if (schedMins === 0) return;
+  nextScanTime = Date.now() + schedMins * 60 * 1000;
+  schedTimer = setTimeout(() => { runScan(true); scheduleNext(); }, schedMins * 60 * 1000);
+  startCountdown();
+}
+
+function startCountdown() {
+  clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    if (!nextScanTime) return;
+    const left = Math.max(0, nextScanTime - Date.now());
+    const m = Math.floor(left / 60000);
+    const s = Math.floor((left % 60000) / 1000);
+    const el = document.getElementById("next-scan-txt");
+    if (el) el.textContent = left > 0 ? `Next scan in ${m}m ${s}s` : "Scanning…";
+  }, 1000);
+}
+
+// ═══ SETTINGS ══════════════════════════════════════════════════════════════
+
+function updateKey() {
+  const v = document.getElementById("set-key").value.trim();
+  if (!v.startsWith("sk-")) { alert("Invalid key format"); return; }
+  apiKey = v;
+  sessionStorage.setItem("cp_key", apiKey);
+  const m = document.getElementById("set-msg");
+  m.style.display = "block";
+  setTimeout(() => m.style.display = "none", 3000);
+}
+
+function clearKey() {
+  apiKey = "";
+  sessionStorage.removeItem("cp_key");
+  clearInterval(schedTimer);
+  clearInterval(countdownInterval);
+  document.getElementById("app").style.display  = "none";
+  document.getElementById("gate").style.display = "flex";
+  document.getElementById("gate-key").value = "";
+}
+
+// ═══ Utils ═════════════════════════════════════════════════════════════════
+
+function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ═══ GO ════════════════════════════════════════════════════════════════════
+boot();
+</script>
+</body>
+</html>
